@@ -26,20 +26,38 @@ class ChessGame:
             for c in range(8):
                 color = WHITE if (r + c) % 2 == 0 else GREY
                 if self.selected_square is not None:
-                    if r == 7 - (self.selected_square // 8) and c == self.selected_square % 8:
+                    if (
+                        r == 7 - (self.selected_square // 8)
+                        and c == self.selected_square % 8
+                    ):
                         color = HIGHLIGHT
-                pygame.draw.rect(self.screen, color,
-                                 pygame.Rect(c * CHESS_SIZE, r * CHESS_SIZE, CHESS_SIZE, CHESS_SIZE))
+                pygame.draw.rect(
+                    self.screen,
+                    color,
+                    pygame.Rect(c * CHESS_SIZE, r * CHESS_SIZE, CHESS_SIZE, CHESS_SIZE),
+                )
 
     def draw_pieces(self):
         """Hiển thị quân cờ bằng ký tự Unicode"""
-        # Sử dụng font hỗ trợ tốt các ký tự đặc biệt
-        font = pygame.font.SysFont("FreeSerif", 60)
+        # Sử dụng Arial Black để quân cờ đẹp hơn
+        font = pygame.font.Font("CASEFONT.TTF", 70)
 
         # Bảng ánh xạ quân cờ sang ký tự Unicode
+        # lower case là quân đen
+        # upper case là quân trắng
         unicode_pieces = {
-            'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚', 'p': '♟',
-            'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔', 'P': '♙'
+            "P": "o",
+            "N": "m",
+            "B": "v",
+            "R": "t",
+            "Q": "w",
+            "K": "l", 
+            "p": "o",
+            "n": "m",
+            "b": "v",
+            "r": "t",
+            "q": "w",
+            "k": "l",
         }
 
         for square in chess.SQUARES:
@@ -48,19 +66,33 @@ class ChessGame:
                 # Lấy ký hiệu (P, n, R,...) và tìm ký tự Unicode tương ứng
                 piece_char = unicode_pieces.get(piece.symbol())
 
-                # Màu sắc (thường các ký tự Unicode đã có hình dạng đen/trắng rõ ràng)
-                # Bạn có thể để màu đen hoàn toàn cho cả hai để tận dụng hình vẽ của font
-                color = (0, 0, 0)
+                # Màu sắc và border
+                if piece.color == chess.WHITE:
+                    color = (255, 255, 255)
+                    border_color = (0, 0, 0)  # border đen cho quân trắng
+                else:
+                    color = (0, 0, 0)
+                    border_color = (255, 255, 255)  # border trắng cho quân đen
 
-                text_surface = font.render(piece_char, True, color)
-
-                # Tính toán tọa độ để căn giữa ô
+                # Tính toán tọa độ để căn giữa ô chính xác
                 col = square % 8
                 row = 7 - (square // 8)
+                center_x = col * CHESS_SIZE + CHESS_SIZE // 2
+                center_y = row * CHESS_SIZE + CHESS_SIZE // 2
 
-                # Căn chỉnh một chút (+10, +5) để quân cờ nằm giữa ô
-                pos = (col * CHESS_SIZE + 15, row * CHESS_SIZE + 5)
-                self.screen.blit(text_surface, pos)
+                # Vẽ border bằng cách vẽ text ở các vị trí xung quanh
+                border_offset = 2
+                for dx in [-border_offset, 0, border_offset]:
+                    for dy in [-border_offset, 0, border_offset]:
+                        if dx != 0 or dy != 0:
+                            border_surface = font.render(piece_char, True, border_color)
+                            border_rect = border_surface.get_rect(center=(center_x + dx, center_y + dy))
+                            self.screen.blit(border_surface, border_rect)
+
+                # Vẽ quân cờ chính trên border
+                text_surface = font.render(piece_char, True, color)
+                text_rect = text_surface.get_rect(center=(center_x, center_y))
+                self.screen.blit(text_surface, text_rect)
 
     def get_square_under_mouse(self):
         mouse_pos = pygame.mouse.get_pos()
@@ -70,7 +102,7 @@ class ChessGame:
 
     def run(self):
         clock = pygame.time.Clock()
-        running = True#test
+        running = True  # test
         while running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -88,10 +120,19 @@ class ChessGame:
                         move = chess.Move(self.selected_square, square)
 
                         # Kiểm tra phong cấp (mặc định lên Hậu)
-                        if move in self.board.legal_moves or chess.Move(self.selected_square, square,
-                                                                        chess.QUEEN) in self.board.legal_moves:
-                            if chess.Move(self.selected_square, square, chess.QUEEN) in self.board.legal_moves:
-                                move = chess.Move(self.selected_square, square, chess.QUEEN)
+                        if (
+                            move in self.board.legal_moves
+                            or chess.Move(self.selected_square, square, chess.QUEEN)
+                            in self.board.legal_moves
+                        ):
+                            if (
+                                chess.Move(self.selected_square, square, chess.QUEEN)
+                                in self.board.legal_moves
+                            ):
+                                move = chess.Move(
+                                    self.selected_square, square, chess.QUEEN
+                                )
+
                             self.board.push(move)
 
                         self.selected_square = None
