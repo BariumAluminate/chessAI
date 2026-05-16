@@ -1,6 +1,7 @@
 import pygame
 import chess
 from chess.svg import piece
+from MoveGenerator import MoveGenerator
 
 # Cấu hình kích thước
 WIDTH, HEIGHT = 600, 600
@@ -11,35 +12,56 @@ FPS = 30
 WHITE = (240, 217, 181)
 GREY = (181, 136, 99)
 HIGHLIGHT = (130, 151, 105)
+MOVE_HIGHLIGHT = (185, 201, 165)
 
 
 class ChessGame:
     def __init__(self):
         self.board = chess.Board()
+        self.move_gen = MoveGenerator(self.board)
+        self.highlighted_squares = []
+        self.selected_square = None
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("Gemini Chess AI Engine")
-        self.selected_square = None
 
     def draw_board(self):
         """Vẽ các ô vuông trên bàn cờ"""
         for r in range(8):
             for c in range(8):
-                color = WHITE if (r + c) % 2 == 0 else GREY
-                if self.selected_square is not None:
-                    if (
-                        r == 7 - (self.selected_square // 8)
-                        and c == self.selected_square % 8
-                    ):
-                        color = HIGHLIGHT
+                square = chess.square(c, 7 - r)
+                if square == self.selected_square:
+                    color = HIGHLIGHT
+                else:
+                    color = WHITE if (r + c) % 2 == 0 else GREY
+
                 pygame.draw.rect(
                     self.screen,
                     color,
                     pygame.Rect(c * CHESS_SIZE, r * CHESS_SIZE, CHESS_SIZE, CHESS_SIZE),
                 )
 
+    def draw_move_indicators(self):
+        """Vẽ các chấm tròn chỉ những ô có thể di chuyển"""
+        # Lặp qua từng ô trong self.highlighted_squares
+        for square in self.highlighted_squares:
+            # Tính r, c từ square
+            row = 7 - (square // 8)
+            col = square % 8
+
+            # Tính tọa độ giữa ô
+            center_x = col * CHESS_SIZE + CHESS_SIZE // 2
+            center_y = row * CHESS_SIZE + CHESS_SIZE // 2
+
+            # Vẽ chấm tròn
+            pygame.draw.circle(
+                self.screen,
+                (50, 50, 50),
+                (center_x, center_y),
+                8
+            )
+
     def draw_pieces(self):
         """Hiển thị quân cờ bằng ký tự Unicode"""
-        # Sử dụng Arial Black để quân cờ đẹp hơn
         font = pygame.font.Font("CASEFONT.TTF", 70)
 
         # Bảng ánh xạ quân cờ sang ký tự Unicode
@@ -51,7 +73,7 @@ class ChessGame:
             "B": "v",
             "R": "t",
             "Q": "w",
-            "K": "l", 
+            "K": "l",
             "p": "o",
             "n": "m",
             "b": "v",
@@ -86,7 +108,9 @@ class ChessGame:
                     for dy in [-border_offset, 0, border_offset]:
                         if dx != 0 or dy != 0:
                             border_surface = font.render(piece_char, True, border_color)
-                            border_rect = border_surface.get_rect(center=(center_x + dx, center_y + dy))
+                            border_rect = border_surface.get_rect(
+                                center=(center_x + dx, center_y + dy)
+                            )
                             self.screen.blit(border_surface, border_rect)
 
                 # Vẽ quân cờ chính trên border
@@ -115,13 +139,17 @@ class ChessGame:
                         # Chọn quân cờ
                         if self.board.piece_at(square):
                             self.selected_square = square
+
+                            # Lấy moves
+                            self.highlighted_squares = [move.to_square for move in self.move_gen.getLegalMoves(self.selected_square)]
+
                     else:
                         # Thực hiện nước đi
                         move = chess.Move(self.selected_square, square)
 
                         # Kiểm tra phong cấp (mặc định lên Hậu)
                         if (
-                            move in self.board.legal_moves
+                            self.move_gen.isMoveLegal(self.selected_square, square)
                             or chess.Move(self.selected_square, square, chess.QUEEN)
                             in self.board.legal_moves
                         ):
@@ -134,12 +162,13 @@ class ChessGame:
                                 )
 
                             self.board.push(move)
-
-                        self.selected_square = None
+                            self.selected_square = None
+                            self.highlighted_squares = []
 
             self.screen.fill((0, 0, 0))
             self.draw_board()
             self.draw_pieces()
+            self.draw_move_indicators()
             pygame.display.flip()
             clock.tick(FPS)
 
