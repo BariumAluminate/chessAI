@@ -21,6 +21,8 @@ class ChessGame:
         self.move_gen = MoveGenerator(self.board)
         self.highlighted_squares = []
         self.selected_square = None
+        self.game_over = False
+        self.game_result = ""
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("Gemini Chess AI Engine")
 
@@ -118,6 +120,50 @@ class ChessGame:
                 text_rect = text_surface.get_rect(center=(center_x, center_y))
                 self.screen.blit(text_surface, text_rect)
 
+    def draw_game_status(self):
+        """Vẽ thông báo game over"""
+        if self.game_over:
+            font_large = pygame.font.Font(None, 50)
+            font_small = pygame.font.Font(None, 40)
+            
+            # Thông báo chiếu hết (trên)
+            text_result = font_large.render(self.game_result, True, (255, 255, 0))
+            rect_result = text_result.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50))
+            
+            # Vẽ nền đen cho thông báo chiếu hết
+            bg_rect_result = rect_result.inflate(40, 20)
+            pygame.draw.rect(self.screen, (0, 0, 0), bg_rect_result)
+            pygame.draw.rect(self.screen, (200, 200, 0), bg_rect_result, 3)  # Border vàng
+            self.screen.blit(text_result, rect_result)
+            
+            # Thông báo "Press R to Play Again" (dưới)
+            text_restart = font_small.render("Press R to Play Again", True, (255, 255, 0))
+            rect_restart = text_restart.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 30))
+            
+            # Vẽ nền đen cho thông báo Play Again
+            bg_rect_restart = rect_restart.inflate(40, 20)
+            pygame.draw.rect(self.screen, (0, 0, 0), bg_rect_restart)
+            pygame.draw.rect(self.screen, (200, 200, 0), bg_rect_restart, 3)  # Border vàng
+            self.screen.blit(text_restart, rect_restart)
+
+    def check_game_status(self):
+        """Kiểm tra game kết thúc chưa"""
+        if self.move_gen.isCheckmate():
+            self.game_over = True
+            # Nguời chơi trước khi checkmate là người thắng
+            if self.board.turn == chess.WHITE:  # Đen vừa checkmate
+                self.game_result = "Black wins by checkmate!"
+            else:
+                self.game_result = "White wins by checkmate!"
+                
+        elif self.move_gen.isStalemate():
+            self.game_over = True
+            self.game_result = "Draw - Stalemate!"
+            
+        elif self.board.is_insufficient_material():
+            self.game_over = True
+            self.game_result = "Draw - Insufficient material!"
+
     def get_square_under_mouse(self):
         mouse_pos = pygame.mouse.get_pos()
         col = mouse_pos[0] // CHESS_SIZE
@@ -164,11 +210,23 @@ class ChessGame:
                             self.board.push(move)
                             self.selected_square = None
                             self.highlighted_squares = []
+                            self.check_game_status()
+
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_r and self.game_over:
+                        #Reset Game
+                        self.board = chess.Board()
+                        self.move_gen = MoveGenerator(self.board)
+                        self.selected_square = None
+                        self.highlighted_squares = []
+                        self.game_over = False
+                        self.game_result = ""
 
             self.screen.fill((0, 0, 0))
             self.draw_board()
             self.draw_pieces()
             self.draw_move_indicators()
+            self.draw_game_status()
             pygame.display.flip()
             clock.tick(FPS)
 
