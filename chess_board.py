@@ -2,6 +2,7 @@ import pygame
 import chess
 from chess.svg import piece
 from MoveGenerator import MoveGenerator
+from ChessAI import ChessAI
 
 # Cấu hình kích thước
 WIDTH, HEIGHT = 600, 600
@@ -24,7 +25,7 @@ class ChessGame:
         self.game_over = False
         self.game_result = ""
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        pygame.display.set_caption("Gemini Chess AI Engine")
+        pygame.display.set_caption("Chess AI Engine")
 
     def draw_board(self):
         """Vẽ các ô vuông trên bàn cờ"""
@@ -215,6 +216,14 @@ class ChessGame:
                             self.selected_square = None
                             self.highlighted_squares = []
                             self.check_game_status()
+
+                            #Sau khi người chơi đi xong
+                            if not self.game_over:
+                                AI = ChessAI(self.board)
+                                AI_move = AI.get_best_move()
+                                if AI_move:
+                                    self.board.push(AI_move)
+                                    self.check_game_status()
 
                         #Di chuyển không hợp lệ
                         else:
