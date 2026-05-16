@@ -189,6 +189,10 @@ class ChessGame:
                             # Lấy moves
                             self.highlighted_squares = [move.to_square for move in self.move_gen.getLegalMoves(self.selected_square)]
 
+                    elif square == self.selected_square:
+                        self.selected_square = None
+                        self.highlighted_squares = []
+
                     else:
                         # Thực hiện nước đi
                         move = chess.Move(self.selected_square, square)
@@ -211,6 +215,16 @@ class ChessGame:
                             self.selected_square = None
                             self.highlighted_squares = []
                             self.check_game_status()
+
+                        #Di chuyển không hợp lệ
+                        else:
+                            piece_at_square = self.board.piece_at(square)
+                            if piece_at_square and piece_at_square.color == self.board.turn:
+                                self.selected_square = square
+                                self.highlighted_squares = [move.to_square for move in self.move_gen.getLegalMoves(self.selected_square)]
+                            else: 
+                                self.selected_square = None
+                                self.highlighted_squares = []
 
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_r and self.game_over:
