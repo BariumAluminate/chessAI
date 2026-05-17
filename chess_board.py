@@ -242,9 +242,9 @@ class ChessGame:
 
                 # Bây giờ AI bắt đầu nghĩ, người chơi đã thấy nước đi của mình trước đó
                 AI = ChessAI(self.board)
-                AI_move = AI.get_minimax_move(3)
-                if AI_move:
-                    self.board.push(AI_move)
+                ai_move = AI.negamax()
+                if ai_move:
+                    self.board.push(ai_move)
                     self.check_game_status()
 
             # --- 3. VẼ ĐỒ HỌA LIÊN TỤC (VÒNG LẶP CHÍNH) ---

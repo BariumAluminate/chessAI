@@ -130,27 +130,54 @@ class ChessAI:
         
         return best_move
 
-    def negamax(self, depth : int):
+    def negamax(self):
         best_value = -float('inf')
-
-
-
-        pass
-
-    def ngm(self,  board, depth : int):
-        if depth == self.max_depth:
-            return evaluate_board(board)
-
-        best_value = -float('inf')
-
+        alpha = -float('inf')
+        beta = float('inf')
+        # Lấy ngay phần tử đầu tiên mà không cần chuyển đổi cả danh sách
+        best_move = next(iter(self.board.legal_moves))
         for move in self.board.legal_moves:
             self.board.push(move)
-            if depth % 2 == 0:
-                best_value = max(best_value, self.ngm(board))
-            else :
-                best_value = -max(-best_value, -self.ngm(board))
+            a = self.ngm(alpha, beta, 1)
+            if best_value < a:
+                best_value = a
+                best_move = move
+            if best_value > beta:
+                return best_move
+            alpha = max(alpha, best_value)
+            self.board.pop()
+        return best_move
 
-        return best_value
+    def ngm(self, alpha, beta, depth: int):
+        # 1. Điều kiện dừng: CHỈ đánh giá thế cờ hiện tại, TUYỆT ĐỐI KHÔNG pop ở đây
+        if depth == self.max_depth or self.board.is_game_over():
+            return evaluate_board(self.board)
+
+        # Nhánh MAX (Lượt chẵn)
+        if depth % 2 == 0:
+            best_value = -float('inf')
+            for move in self.board.legal_moves:
+                self.board.push(move)
+                best_value = max(best_value, self.ngm(alpha, beta, depth + 1))
+                self.board.pop()  # Pop ngay sau khi nhánh đệ quy kết thúc
+
+                alpha = max(alpha, best_value)
+                if best_value >= beta:
+                    break  # Dùng break thay vì return để không bị nuốt mất lệnh pop() phía trên
+            return best_value
+
+        # Nhánh MIN (Lượt lẻ)
+        else:
+            best_value = float('inf')
+            for move in self.board.legal_moves:
+                self.board.push(move)
+                best_value = min(best_value, self.ngm(alpha, beta, depth + 1))
+                self.board.pop()  # Pop ngay sau khi nhánh đệ quy kết thúc
+
+                beta = min(beta, best_value)
+                if best_value <= alpha:
+                    break  # Dùng break để thoát vòng lặp an toàn
+            return best_value
 
 
 
