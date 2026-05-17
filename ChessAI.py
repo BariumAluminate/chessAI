@@ -2,9 +2,40 @@ import chess
 import pygame
 from chess.svg import piece
 
+def evaluate_board(board):
+    """Hàm tự viết để AI chấm điểm: Dương là Trắng ưu thế, Âm là Đen ưu thế"""
+    if board.is_checkmate():
+        # Nếu Trắng bị chiếu hết thì Đen thắng (điểm cực âm) và ngược lại
+        return -99999 if board.turn == chess.WHITE else 99999
+    if board.is_game_over():
+        return 0  # Hòa cờ
+
+    # Bảng giá trị quân cờ
+    piece_values = {
+        chess.PAWN: 100,
+        chess.KNIGHT: 320,
+        chess.BISHOP: 330,
+        chess.ROOK: 500,
+        chess.QUEEN: 900,
+        chess.KING: 20000
+    }
+
+    score = 0
+    for square in chess.SQUARES:
+        piece = board.piece_at(square)
+        if piece:
+            val = piece_values[piece.piece_type]
+            # Cộng điểm cho Trắng, trừ điểm cho Đen
+            if piece.color == chess.WHITE:
+                score += val
+            else:
+                score -= val
+    return score
+
 class ChessAI:
     def __init__(self, board):
         self.board = board
+        self.max_depth = 3
         # Bảng điểm quân cờ
         self.PIECE_VALUES = {
             chess.PAWN: 100,
@@ -98,6 +129,30 @@ class ChessAI:
                     best_move = move
         
         return best_move
+
+    def negamax(self, depth : int):
+        best_value = -float('inf')
+
+
+
+        pass
+
+    def ngm(self,  board, depth : int):
+        if depth == self.max_depth:
+            return evaluate_board(board)
+
+        best_value = -float('inf')
+
+        for move in self.board.legal_moves:
+            self.board.push(move)
+            if depth % 2 == 0:
+                best_value = max(best_value, self.ngm(board))
+            else :
+                best_value = -max(-best_value, -self.ngm(board))
+
+        return best_value
+
+
 
 
 

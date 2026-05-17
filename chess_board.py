@@ -1,6 +1,5 @@
 import pygame
 import chess
-from chess.svg import piece
 from MoveGenerator import MoveGenerator
 from ChessAI import ChessAI
 
@@ -173,71 +172,57 @@ class ChessGame:
 
     def run(self):
         clock = pygame.time.Clock()
-        running = True  # test
+        running = True
         while running:
+            # --- 1. XỬ LÝ SỰ KIỆN TỪ NGƯỜI CHƠI ---
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
 
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    square = self.get_square_under_mouse()
+                if event.type == pygame.MOUSEBUTTONDOWN and not self.game_over:
+                    # Chỉ cho phép nhấn chuột nếu đang là lượt của NGƯỜI CHƠI (Quân Trắng)
+                    if self.board.turn == chess.WHITE:
+                        square = self.get_square_under_mouse()
 
-                    if self.selected_square is None:
-                        # Chọn quân cờ
-                        if self.board.piece_at(square):
-                            self.selected_square = square
+                        if self.selected_square is None:
+                            if self.board.piece_at(square):
+                                self.selected_square = square
+                                self.highlighted_squares = [move.to_square for move in
+                                                            self.move_gen.getLegalMoves(self.selected_square)]
 
-                            # Lấy moves
-                            self.highlighted_squares = [move.to_square for move in self.move_gen.getLegalMoves(self.selected_square)]
-
-                    elif square == self.selected_square:
-                        self.selected_square = None
-                        self.highlighted_squares = []
-
-                    else:
-                        # Thực hiện nước đi
-                        move = chess.Move(self.selected_square, square)
-
-                        # Kiểm tra phong cấp (mặc định lên Hậu)
-                        if (
-                            self.move_gen.isMoveLegal(self.selected_square, square)
-                            or chess.Move(self.selected_square, square, chess.QUEEN)
-                            in self.board.legal_moves
-                        ):
-                            if (
-                                chess.Move(self.selected_square, square, chess.QUEEN)
-                                in self.board.legal_moves
-                            ):
-                                move = chess.Move(
-                                    self.selected_square, square, chess.QUEEN
-                                )
-
-                            self.board.push(move)
+                        elif square == self.selected_square:
                             self.selected_square = None
                             self.highlighted_squares = []
-                            self.check_game_status()
 
-                            #Sau khi người chơi đi xong
-                            if not self.game_over:
-                                AI = ChessAI(self.board)
-                                AI_move = AI.get_best_move()
-                                if AI_move:
-                                    self.board.push(AI_move)
-                                    self.check_game_status()
-
-                        #Di chuyển không hợp lệ
                         else:
-                            piece_at_square = self.board.piece_at(square)
-                            if piece_at_square and piece_at_square.color == self.board.turn:
-                                self.selected_square = square
-                                self.highlighted_squares = [move.to_square for move in self.move_gen.getLegalMoves(self.selected_square)]
-                            else: 
+                            # Thực hiện nước đi cho Người
+                            move = chess.Move(self.selected_square, square)
+
+                            if (self.move_gen.isMoveLegal(self.selected_square, square)
+                                    or chess.Move(self.selected_square, square, chess.QUEEN) in self.board.legal_moves):
+
+                                if chess.Move(self.selected_square, square, chess.QUEEN) in self.board.legal_moves:
+                                    move = chess.Move(self.selected_square, square, chess.QUEEN)
+
+                                self.board.push(move)
                                 self.selected_square = None
                                 self.highlighted_squares = []
+                                self.check_game_status()
+                                # KHÔNG gọi AI ở đây nữa! Người đi xong, hàm kết thúc, nhường cho vòng lặp render.
+
+                            # Di chuyển không hợp lệ
+                            else:
+                                piece_at_square = self.board.piece_at(square)
+                                if piece_at_square and piece_at_square.color == self.board.turn:
+                                    self.selected_square = square
+                                    self.highlighted_squares = [move.to_square for move in
+                                                                self.move_gen.getLegalMoves(self.selected_square)]
+                                else:
+                                    self.selected_square = None
+                                    self.highlighted_squares = []
 
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_r and self.game_over:
-                        #Reset Game
                         self.board = chess.Board()
                         self.move_gen = MoveGenerator(self.board)
                         self.selected_square = None
@@ -245,6 +230,24 @@ class ChessGame:
                         self.game_over = False
                         self.game_result = ""
 
+            # --- 2. XỬ LÝ LƯỢT ĐI CỦA AI ---
+            # Cơ chế: Nếu game chưa kết thúc và đến lượt Đen (AI), AI sẽ tính toán
+            if not self.game_over and self.board.turn == chess.BLACK:
+                # Vẽ lại bàn cờ một lần trước khi AI đóng băng hệ thống để nghĩ
+                self.screen.fill((0, 0, 0))
+                self.draw_board()
+                self.draw_pieces()
+                self.draw_move_indicators()
+                pygame.display.flip()
+
+                # Bây giờ AI bắt đầu nghĩ, người chơi đã thấy nước đi của mình trước đó
+                AI = ChessAI(self.board)
+                AI_move = AI.get_minimax_move(3)
+                if AI_move:
+                    self.board.push(AI_move)
+                    self.check_game_status()
+
+            # --- 3. VẼ ĐỒ HỌA LIÊN TỤC (VÒNG LẶP CHÍNH) ---
             self.screen.fill((0, 0, 0))
             self.draw_board()
             self.draw_pieces()
