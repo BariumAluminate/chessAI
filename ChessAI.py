@@ -4,7 +4,7 @@ from chess.svg import piece
 
 import chess
 
-# 1. Định nghĩa giá trị cơ bản của các quân cờ
+# Định nghĩa giá trị cơ bản của các quân cờ
 PIECE_VALUES = {
     chess.PAWN: 100,
     chess.KNIGHT: 320,
@@ -13,10 +13,6 @@ PIECE_VALUES = {
     chess.QUEEN: 900,
     chess.KING: 20000
 }
-
-# 2. Bảng vị trí (Piece-Square Tables) - Nhìn từ góc độ quân Trắng
-# Giá trị cao hơn nghĩa là vị trí đó tốt hơn cho quân đó.
-# Mẹo: Python-chess đếm ô từ A1 (chỉ số 0) đến H8 (chỉ số 63), nên ta đảo ngược mảng để trực quan.
 
 PAWN_PST = [
     0, 0, 0, 0, 0, 0, 0, 0,
@@ -27,7 +23,7 @@ PAWN_PST = [
     5, -5, -10, 0, 0, -10, -5, 5,
     5, 10, 10, -20, -20, 10, 10, 5,
     0, 0, 0, 0, 0, 0, 0, 0
-][::-1]  # Đảo ngược để khớp với index của python-chess (A1 ở đầu)
+][::-1]
 
 KNIGHT_PST = [
     -50, -40, -30, -30, -30, -30, -40, -50,
@@ -55,19 +51,15 @@ def evaluate_board(board: chess.Board) -> int:
 
     score = 0
 
-    # Lặp qua tất cả 64 ô trên bàn cờ
     for square in chess.SQUARES:
         piece = board.piece_at(square)
         if piece is None:
             continue
 
-        # Lấy giá trị cơ bản của quân cờ
         value = PIECE_VALUES[piece.piece_type]
 
-        # Cộng điểm vị trí (PST) cho Tốt và Mã
         pst_bonus = 0
 
-        # Vì PST được thiết kế cho Trắng, với Đen ta phải lật ngược bàn cờ lại theo trục ngang
         eval_square = square if piece.color == chess.WHITE else chess.square_mirror(square)
 
         if piece.piece_type == chess.PAWN:
@@ -108,17 +100,15 @@ class ChessAI:
         """
         if self.board.is_checkmate():
             if self.board.turn == chess.WHITE:
-                return -99999  #Đen thắng
+                return -99999
             else:
-                return 99999  #Trắng thắng
+                return 99999
 
-        """Hòa"""
         if self.board.is_stalemate():
             return 0
 
         score = 0
 
-        """Lặp qua tất cả các ô trên bàn cờ"""
         for square in chess.SQUARES:
             piece = self.board.piece_at(square)
             if piece:
@@ -130,7 +120,7 @@ class ChessAI:
         return score
 
     # ======================================
-    # XẮP XẾP NƯỚC ĐI
+    # SẮP XẾP NƯỚC ĐI
     # ======================================
     def order_moves(self, moves):
         """
