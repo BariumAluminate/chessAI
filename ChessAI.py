@@ -16,7 +16,7 @@ PIECE_VALUES = {
 
 # 2. Bảng vị trí (Piece-Square Tables) - Nhìn từ góc độ quân Trắng
 # Giá trị cao hơn nghĩa là vị trí đó tốt hơn cho quân đó.
-# Mẹo: Python-chess đếm ô từ A1 (chỉ số 0) đến H8 (chỉ số 63), nên ta đảo ngược mảng để trực quan.
+# Python-chess đếm ô từ A1 (chỉ số 0) đến H8 (chỉ số 63), nên ta đảo ngược mảng để trực quan.
 
 PAWN_PST = [
     0, 0, 0, 0, 0, 0, 0, 0,
@@ -41,48 +41,7 @@ KNIGHT_PST = [
 ][::-1]
 
 
-def evaluate_board(board: chess.Board) -> int:
-    """
-    Hàm đánh giá thế trận hiện tại của bàn cờ.
-    Trả về điểm số: Dương (Trắng lợi), Âm (Đen lợi).
-    """
-    # Kiểm tra trạng thái kết thúc game trước
-    if board.is_checkmate():
-        # Nếu đang đến lượt Trắng mà bị chiếu hết -> Đen thắng (-vô cùng)
-        return -99999 if board.turn == chess.WHITE else 99999
-    if board.is_stalemate() or board.is_insufficient_material():
-        return 0
 
-    score = 0
-
-    # Lặp qua tất cả 64 ô trên bàn cờ
-    for square in chess.SQUARES:
-        piece = board.piece_at(square)
-        if piece is None:
-            continue
-
-        # Lấy giá trị cơ bản của quân cờ
-        value = PIECE_VALUES[piece.piece_type]
-
-        # Cộng điểm vị trí (PST) cho Tốt và Mã
-        pst_bonus = 0
-
-        # Vì PST được thiết kế cho Trắng, với Đen ta phải lật ngược bàn cờ lại theo trục ngang
-        eval_square = square if piece.color == chess.WHITE else chess.square_mirror(square)
-
-        if piece.piece_type == chess.PAWN:
-            pst_bonus = PAWN_PST[eval_square]
-        elif piece.piece_type == chess.KNIGHT:
-            pst_bonus = KNIGHT_PST[eval_square]
-
-        total_piece_score = value + pst_bonus
-
-        if piece.color == chess.WHITE:
-            score -= total_piece_score
-        else:
-            score += total_piece_score
-
-    return score
 
 class ChessAI:
     def __init__(self, board):
@@ -101,32 +60,48 @@ class ChessAI:
     # ======================================
     # HÀM ĐÁNH GIÁ
     # ======================================
-    def evaluate_board(self):
+    def evaluate_board(self) -> int:
         """
-        Hàm đánh giá: Trả về (Điểm trắng - Điểm đen).
-        Số dương: Trắng ưu thế. Số âm: Đen ưu thế.
+        Hàm đánh giá thế trận hiện tại của bàn cờ.
+        Trả về điểm số: Dương (Trắng lợi), Âm (Đen lợi).
         """
+        # Kiểm tra trạng thái kết thúc game trước
         if self.board.is_checkmate():
-            if self.board.turn == chess.WHITE:
-                return -99999  #Đen thắng
-            else:
-                return 99999  #Trắng thắng
-
-        """Hòa"""
-        if self.board.is_stalemate():
+            # Nếu đang đến lượt Trắng mà bị chiếu hết -> Đen thắng (-vô cùng)
+            return -99999 if self.board.turn == chess.WHITE else 99999
+        if self.board.is_stalemate() or self.board.is_insufficient_material():
             return 0
 
         score = 0
 
-        """Lặp qua tất cả các ô trên bàn cờ"""
+        # Lặp qua tất cả 64 ô trên bàn cờ
         for square in chess.SQUARES:
             piece = self.board.piece_at(square)
-            if piece:
-                val = self.PIECE_VALUES.get(piece.piece_type, 0)
-                if piece.color == chess.WHITE:
-                    score += val
-                else:
-                    score -= val
+            if piece is None:
+                continue
+
+            # Lấy giá trị cơ bản của quân cờ
+            value = self.PIECE_VALUES[piece.piece_type]
+
+            # Cộng điểm vị trí (PST) cho Tốt và Mã
+            pst_bonus = 0
+
+            # Vì PST được thiết kế cho Trắng, với Đen ta phải lật ngược bàn cờ lại theo trục ngang
+            eval_square = square if piece.color == chess.WHITE else chess.square_mirror(square)
+
+            if piece.piece_type == chess.PAWN:
+                pst_bonus = PAWN_PST[eval_square]
+            elif piece.piece_type == chess.KNIGHT:
+                pst_bonus = KNIGHT_PST[eval_square]
+
+            total_piece_score = value + pst_bonus
+
+            # Cập nhật điểm
+            if piece.color == chess.WHITE:
+                score -= total_piece_score
+            else:
+                score += total_piece_score
+
         return score
 
     # ======================================
@@ -312,7 +287,7 @@ class ChessAI:
     def ngm(self, alpha, beta, depth: int):
         # 1. Điều kiện dừng: CHỈ đánh giá thế cờ hiện tại, TUYỆT ĐỐI KHÔNG pop ở đây
         if depth == self.max_depth or self.board.is_game_over():
-            return evaluate_board(self.board)
+            return self.evaluate_board()
 
         # Nhánh MAX (Lượt chẵn)
         if depth % 2 == 0:

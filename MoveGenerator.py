@@ -7,11 +7,11 @@ class MoveGenerator:
     # ===== ĐIỂM SỐ CỦA TỪNG LOẠI QUÂN =====
     PIECE_VALUES = {
         chess.PAWN: 100,
-        chess.KNIGHT: 300,
-        chess.BISHOP: 300,
+        chess.KNIGHT: 320,
+        chess.BISHOP: 330,
         chess.ROOK: 500,
         chess.QUEEN: 900,
-        chess.KING: 0,
+        chess.KING: 20000
     }
 
     def __init__(self, board):
