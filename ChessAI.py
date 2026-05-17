@@ -15,7 +15,9 @@ class ChessAI:
             chess.KING: 0
         }
 
-
+    # ======================================
+    # HÀM ĐÁNH GIÁ
+    # ======================================
     def evaluate_board(self):
         """
         Hàm đánh giá: Trả về (Điểm trắng - Điểm đen).
@@ -23,12 +25,17 @@ class ChessAI:
         """
         if self.board.is_checkmate():
             if self.board.turn == chess.WHITE:
-                return -99999 #Đen thắng
+                return -99999  #Đen thắng
             else:
-                return 99999 #Trắng thắng
-            
+                return 99999  #Trắng thắng
+
+        """Hòa"""
+        if self.board.is_stalemate():
+            return 0
+
         score = 0
-        #Lặp qua tất cả các ô trên bàn cờ
+
+        """Lặp qua tất cả các ô trên bàn cờ"""
         for square in chess.SQUARES:
             piece = self.board.piece_at(square)
             if piece:
@@ -38,12 +45,52 @@ class ChessAI:
                 else:
                     score -= val
         return score
-    
+
+    # ======================================
+    # XẮP XẾP NƯỚC ĐI
+    # ======================================
+    def order_moves(self, moves):
+        """
+        Sắp xếp nước đi:
+        - ưu tiên ăn quân giá trị cao
+        - ưu tiên chiếu vua
+        """
+
+        def move_score(move):
+
+            score = 0
+
+            """Nếu là nước ăn quân"""
+            if self.board.is_capture(move):
+
+                captured_piece = self.board.piece_at(move.to_square)
+                moving_piece = self.board.piece_at(move.from_square)
+
+                if captured_piece and moving_piece:
+                    score += (
+                            10 * self.PIECE_VALUES[captured_piece.piece_type]
+                            - self.PIECE_VALUES[moving_piece.piece_type]
+                            #Ưu tiên dùng con nhỏ ăn con to
+                    )
+
+            """Nếu là nước chiếu"""
+            self.board.push(move)
+
+            if self.board.is_check():
+                score += 50
+
+            self.board.pop()
+
+            return score
+
+        return sorted(moves, key=move_score, reverse=True)
+
+
 
     # ==========================
-    # THUẬT TOÁN MINIMAX
+    # THUẬT TOÁN MINIMAX + cắt tỉa Alpha Beta
     # ==========================
-    def minimax(self, depth, is_maximizing):
+    def minimax(self, depth, alpha, beta):
         """
         Thuật toán Minimax đệ quy
         depth: độ sâu còn lại cần tính
@@ -52,50 +99,112 @@ class ChessAI:
         # Điều kiện dừng: đạt độ sâu tối đa hoặc game kết thúc
         if depth == 0 or self.board.is_game_over():
             return self.evaluate_board()
-        
-        if is_maximizing:
-            max_evaluate = -float('inf')
-            for move in self.board.legal_moves:
+
+        moves = self.order_moves(list(self.board.legal_moves))
+
+        # ==================================
+        # WHITE -> MAX
+        # ==================================
+        if self.board.turn == chess.WHITE:
+
+            max_eval = -float('inf')
+
+            for move in moves:
+
                 self.board.push(move)
-                evaluate = self.minimax(depth - 1, False) #Đệ quy và đổi lượt
+
+                evaluation = self.minimax(
+                    depth - 1,
+                    alpha,
+                    beta
+                )
+
                 self.board.pop()
-                max_evaluate = max(max_evaluate, evaluate)
-            return max_evaluate
+
+                max_eval = max(max_eval, evaluation)
+
+                alpha = max(alpha, evaluation)
+
+                # Cắt tỉa Alpha-Beta
+                if beta <= alpha:
+                    break
+
+            return max_eval
+            # ==================================
+            # BLACK -> MIN
+            # ==================================
         else:
-            min_evaluate = float('inf')
-            for move in self.board.legal_moves:
+
+            min_eval = float('inf')
+
+            for move in moves:
+
                 self.board.push(move)
-                evaluate = self.minimax(depth - 1, True) #Đệ quy và đổi lượt
+
+                evaluation = self.minimax(
+                    depth - 1,
+                    alpha,
+                    beta
+                )
+
                 self.board.pop()
-                min_evaluate = min(min_evaluate, evaluate)
-            return min_evaluate
+
+                min_eval = min(min_eval, evaluation)
+
+                beta = min(beta, evaluation)
+
+                # Cắt tỉa Alpha-Beta
+                if beta <= alpha:
+                    break
+
+            return min_eval
         
 
     def get_minimax_move(self, depth=3):
         """Để mặc định độ sâu là 3"""
         best_move = None
 
+        moves = self.order_moves(list(self.board.legal_moves))
+
         if self.board.turn == chess.WHITE:
             best_value = -float('inf')
-            for move in self.board.legal_moves:
+            alpha = -float('inf')  # Khởi tạo alpha ở gốc
+            beta = float('inf')
+
+            for move in moves:
                 self.board.push(move)
-                value = self.minimax(depth, False)
+                value = self.minimax(
+                    depth - 1,
+                    alpha,
+                    beta
+                )
                 self.board.pop()
                 
                 if value > best_value:
                     best_value = value
                     best_move = move
+
+                alpha = max(alpha, best_value) # cập nhật alpha
         
         else:
             best_value = float('inf')
+            alpha = -float('inf')
+            beta = float('inf')  # Khởi tạo beta ở gốc
+
             for move in self.board.legal_moves:
                 self.board.push(move)
-                value = self.minimax(depth, True)
+                value = self.minimax(
+                    depth - 1,
+                    alpha,
+                    beta
+                )
                 self.board.pop()
 
                 if value < best_value:
                     best_value = value
                     best_move = move
+
+                beta = min(beta, best_value) # cập nhật beta
         
         return best_move
 
