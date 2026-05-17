@@ -2,9 +2,92 @@ import chess
 import pygame
 from chess.svg import piece
 
+import chess
+
+# 1. Định nghĩa giá trị cơ bản của các quân cờ
+PIECE_VALUES = {
+    chess.PAWN: 100,
+    chess.KNIGHT: 320,
+    chess.BISHOP: 330,
+    chess.ROOK: 500,
+    chess.QUEEN: 900,
+    chess.KING: 20000
+}
+
+# 2. Bảng vị trí (Piece-Square Tables) - Nhìn từ góc độ quân Trắng
+# Giá trị cao hơn nghĩa là vị trí đó tốt hơn cho quân đó.
+# Mẹo: Python-chess đếm ô từ A1 (chỉ số 0) đến H8 (chỉ số 63), nên ta đảo ngược mảng để trực quan.
+
+PAWN_PST = [
+    0, 0, 0, 0, 0, 0, 0, 0,
+    50, 50, 50, 50, 50, 50, 50, 50,
+    10, 10, 20, 30, 30, 20, 10, 10,
+    5, 5, 10, 25, 25, 10, 5, 5,
+    0, 0, 0, 20, 20, 0, 0, 0,
+    5, -5, -10, 0, 0, -10, -5, 5,
+    5, 10, 10, -20, -20, 10, 10, 5,
+    0, 0, 0, 0, 0, 0, 0, 0
+][::-1]  # Đảo ngược để khớp với index của python-chess (A1 ở đầu)
+
+KNIGHT_PST = [
+    -50, -40, -30, -30, -30, -30, -40, -50,
+    -40, -20, 0, 0, 0, 0, -20, -40,
+    -30, 0, 10, 15, 15, 10, 0, -30,
+    -30, 5, 15, 20, 20, 15, 5, -30,
+    -30, 0, 15, 20, 20, 15, 0, -30,
+    -30, 5, 10, 15, 15, 10, 5, -30,
+    -40, -20, 0, 5, 5, 0, -20, -40,
+    -50, -40, -30, -30, -30, -30, -40, -50
+][::-1]
+
+
+def evaluate_board(board: chess.Board) -> int:
+    """
+    Hàm đánh giá thế trận hiện tại của bàn cờ.
+    Trả về điểm số: Dương (Trắng lợi), Âm (Đen lợi).
+    """
+    # Kiểm tra trạng thái kết thúc game trước
+    if board.is_checkmate():
+        # Nếu đang đến lượt Trắng mà bị chiếu hết -> Đen thắng (-vô cùng)
+        return -99999 if board.turn == chess.WHITE else 99999
+    if board.is_stalemate() or board.is_insufficient_material():
+        return 0
+
+    score = 0
+
+    # Lặp qua tất cả 64 ô trên bàn cờ
+    for square in chess.SQUARES:
+        piece = board.piece_at(square)
+        if piece is None:
+            continue
+
+        # Lấy giá trị cơ bản của quân cờ
+        value = PIECE_VALUES[piece.piece_type]
+
+        # Cộng điểm vị trí (PST) cho Tốt và Mã
+        pst_bonus = 0
+
+        # Vì PST được thiết kế cho Trắng, với Đen ta phải lật ngược bàn cờ lại theo trục ngang
+        eval_square = square if piece.color == chess.WHITE else chess.square_mirror(square)
+
+        if piece.piece_type == chess.PAWN:
+            pst_bonus = PAWN_PST[eval_square]
+        elif piece.piece_type == chess.KNIGHT:
+            pst_bonus = KNIGHT_PST[eval_square]
+
+        total_piece_score = value + pst_bonus
+
+        if piece.color == chess.WHITE:
+            score -= total_piece_score
+        else:
+            score += total_piece_score
+
+    return score
+
 class ChessAI:
     def __init__(self, board):
         self.board = board
+        self.max_depth = 4
         # Bảng điểm quân cờ
         self.PIECE_VALUES = {
             chess.PAWN: 100,
@@ -207,6 +290,57 @@ class ChessAI:
                 beta = min(beta, best_value) # cập nhật beta
         
         return best_move
+
+    def negamax(self):
+        best_value = -float('inf')
+        alpha = -float('inf')
+        beta = float('inf')
+        # Lấy ngay phần tử đầu tiên mà không cần chuyển đổi cả danh sách
+        best_move = next(iter(self.board.legal_moves))
+        for move in self.board.legal_moves:
+            self.board.push(move)
+            a = self.ngm(alpha, beta, 1)
+            if best_value < a:
+                best_value = a
+                best_move = move
+            if best_value > beta:
+                return best_move
+            alpha = max(alpha, best_value)
+            self.board.pop()
+        return best_move
+
+    def ngm(self, alpha, beta, depth: int):
+        # 1. Điều kiện dừng: CHỈ đánh giá thế cờ hiện tại, TUYỆT ĐỐI KHÔNG pop ở đây
+        if depth == self.max_depth or self.board.is_game_over():
+            return evaluate_board(self.board)
+
+        # Nhánh MAX (Lượt chẵn)
+        if depth % 2 == 0:
+            best_value = -float('inf')
+            for move in self.board.legal_moves:
+                self.board.push(move)
+                best_value = max(best_value, self.ngm(alpha, beta, depth + 1))
+                self.board.pop()  # Pop ngay sau khi nhánh đệ quy kết thúc
+
+                alpha = max(alpha, best_value)
+                if best_value >= beta:
+                    break  # Dùng break thay vì return để không bị nuốt mất lệnh pop() phía trên
+            return best_value
+
+        # Nhánh MIN (Lượt lẻ)
+        else:
+            best_value = float('inf')
+            for move in self.board.legal_moves:
+                self.board.push(move)
+                best_value = min(best_value, self.ngm(alpha, beta, depth + 1))
+                self.board.pop()  # Pop ngay sau khi nhánh đệ quy kết thúc
+
+                beta = min(beta, best_value)
+                if best_value <= alpha:
+                    break  # Dùng break để thoát vòng lặp an toàn
+            return best_value
+
+
 
 
 
