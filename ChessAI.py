@@ -2,40 +2,92 @@ import chess
 import pygame
 from chess.svg import piece
 
-def evaluate_board(board):
-    """Hàm tự viết để AI chấm điểm: Dương là Trắng ưu thế, Âm là Đen ưu thế"""
-    if board.is_checkmate():
-        # Nếu Trắng bị chiếu hết thì Đen thắng (điểm cực âm) và ngược lại
-        return -99999 if board.turn == chess.WHITE else 99999
-    if board.is_game_over():
-        return 0  # Hòa cờ
+import chess
 
-    # Bảng giá trị quân cờ
-    piece_values = {
-        chess.PAWN: 100,
-        chess.KNIGHT: 320,
-        chess.BISHOP: 330,
-        chess.ROOK: 500,
-        chess.QUEEN: 900,
-        chess.KING: 20000
-    }
+# 1. Định nghĩa giá trị cơ bản của các quân cờ
+PIECE_VALUES = {
+    chess.PAWN: 100,
+    chess.KNIGHT: 320,
+    chess.BISHOP: 330,
+    chess.ROOK: 500,
+    chess.QUEEN: 900,
+    chess.KING: 20000
+}
+
+# 2. Bảng vị trí (Piece-Square Tables) - Nhìn từ góc độ quân Trắng
+# Giá trị cao hơn nghĩa là vị trí đó tốt hơn cho quân đó.
+# Mẹo: Python-chess đếm ô từ A1 (chỉ số 0) đến H8 (chỉ số 63), nên ta đảo ngược mảng để trực quan.
+
+PAWN_PST = [
+    0, 0, 0, 0, 0, 0, 0, 0,
+    50, 50, 50, 50, 50, 50, 50, 50,
+    10, 10, 20, 30, 30, 20, 10, 10,
+    5, 5, 10, 25, 25, 10, 5, 5,
+    0, 0, 0, 20, 20, 0, 0, 0,
+    5, -5, -10, 0, 0, -10, -5, 5,
+    5, 10, 10, -20, -20, 10, 10, 5,
+    0, 0, 0, 0, 0, 0, 0, 0
+][::-1]  # Đảo ngược để khớp với index của python-chess (A1 ở đầu)
+
+KNIGHT_PST = [
+    -50, -40, -30, -30, -30, -30, -40, -50,
+    -40, -20, 0, 0, 0, 0, -20, -40,
+    -30, 0, 10, 15, 15, 10, 0, -30,
+    -30, 5, 15, 20, 20, 15, 5, -30,
+    -30, 0, 15, 20, 20, 15, 0, -30,
+    -30, 5, 10, 15, 15, 10, 5, -30,
+    -40, -20, 0, 5, 5, 0, -20, -40,
+    -50, -40, -30, -30, -30, -30, -40, -50
+][::-1]
+
+
+def evaluate_board(board: chess.Board) -> int:
+    """
+    Hàm đánh giá thế trận hiện tại của bàn cờ.
+    Trả về điểm số: Dương (Trắng lợi), Âm (Đen lợi).
+    """
+    # Kiểm tra trạng thái kết thúc game trước
+    if board.is_checkmate():
+        # Nếu đang đến lượt Trắng mà bị chiếu hết -> Đen thắng (-vô cùng)
+        return -99999 if board.turn == chess.WHITE else 99999
+    if board.is_stalemate() or board.is_insufficient_material():
+        return 0
 
     score = 0
+
+    # Lặp qua tất cả 64 ô trên bàn cờ
     for square in chess.SQUARES:
         piece = board.piece_at(square)
-        if piece:
-            val = piece_values[piece.piece_type]
-            # Cộng điểm cho Trắng, trừ điểm cho Đen
-            if piece.color == chess.WHITE:
-                score += val
-            else:
-                score -= val
+        if piece is None:
+            continue
+
+        # Lấy giá trị cơ bản của quân cờ
+        value = PIECE_VALUES[piece.piece_type]
+
+        # Cộng điểm vị trí (PST) cho Tốt và Mã
+        pst_bonus = 0
+
+        # Vì PST được thiết kế cho Trắng, với Đen ta phải lật ngược bàn cờ lại theo trục ngang
+        eval_square = square if piece.color == chess.WHITE else chess.square_mirror(square)
+
+        if piece.piece_type == chess.PAWN:
+            pst_bonus = PAWN_PST[eval_square]
+        elif piece.piece_type == chess.KNIGHT:
+            pst_bonus = KNIGHT_PST[eval_square]
+
+        total_piece_score = value + pst_bonus
+
+        if piece.color == chess.WHITE:
+            score -= total_piece_score
+        else:
+            score += total_piece_score
+
     return score
 
 class ChessAI:
     def __init__(self, board):
         self.board = board
-        self.max_depth = 3
+        self.max_depth = 4
         # Bảng điểm quân cờ
         self.PIECE_VALUES = {
             chess.PAWN: 100,
