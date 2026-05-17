@@ -6,11 +6,11 @@ class MoveGenerator:
     
     # ===== ĐIỂM SỐ CỦA TỪNG LOẠI QUÂN =====
     PIECE_VALUES = {
-        chess.PAWN: 1,
-        chess.KNIGHT: 3,
-        chess.BISHOP: 3,
-        chess.ROOK: 5,
-        chess.QUEEN: 9,
+        chess.PAWN: 100,
+        chess.KNIGHT: 300,
+        chess.BISHOP: 300,
+        chess.ROOK: 500,
+        chess.QUEEN: 900,
         chess.KING: 0,
     }
 
@@ -67,8 +67,10 @@ class MoveGenerator:
         Ví dụ:
             valid = mg.isMoveLegal(chess.E2, chess.E4)  # True
         """
-        move = chess.Move(from_square, to_square)
-        return move in self.board.legal_moves
+        for move in self.board.legal_moves:
+            if move.from_square == from_square and move.to_square == to_square:
+                return True
+        return False
 
     # ===== PIECE INFO =====
     
@@ -93,10 +95,10 @@ class MoveGenerator:
         """Lấy điểm số (giá trị) của quân cờ tại ô
         
         Giải thích:
-            - Pawn = 1 điểm
-            - Knight/Bishop = 3 điểm
-            - Rook = 5 điểm
-            - Queen = 9 điểm
+            - Pawn = 100 điểm
+            - Knight/Bishop = 300 điểm
+            - Rook = 500 điểm
+            - Queen = 900 điểm
             - King = 0 (không thể tính giá trị)
         
         Args:
@@ -106,8 +108,8 @@ class MoveGenerator:
             int: điểm số của quân, 0 nếu ô trống
         
         Ví dụ:
-            value = mg.getValueAt(chess.E2)    # 1 (Pawn)
-            value = mg.getValueAt(chess.D1)    # 9 (Queen)
+            value = mg.getValueAt(chess.E2)    # 100 (Pawn)
+            value = mg.getValueAt(chess.D1)    # 900(Queen)
             value = mg.getValueAt(chess.E4)    # 0 (ô trống)
         """
         piece = self.board.piece_at(square)
@@ -117,7 +119,7 @@ class MoveGenerator:
 
     # ===== ATTACK INFO =====
     
-    def getAttackedSquares(self):
+    def getAttackedSquares(self, by_color):
         """Lấy TẤT CẢ ô bị tấn công bởi lực lượng hiện tại
         
         Giải thích:
@@ -133,11 +135,12 @@ class MoveGenerator:
             print(len(attacked))  # Số ô bị tấn công
         """
         attacked_squares = set()
-        for move in self.board.legal_moves:
-            attacked_squares.add(move.to_square)
+        for square in chess.SQUARES:
+            if self.board.is_attacked_by(by_color, square):
+                attacked_squares.add(square)
         return attacked_squares
 
-    def isSquareAttacked(self, square):
+    def isSquareAttacked(self, square, by_color):
         """Kiểm tra 1 ô có bị tấn công không
         
         Args:
@@ -151,7 +154,7 @@ class MoveGenerator:
             if attacked:
                 print("Ô e4 bị tấn công!")
         """
-        return square in self.getAttackedSquares()
+        return self.board.is_attacked_by(by_color, square)
 
     # ===== GAME STATE =====
     
@@ -217,7 +220,7 @@ class MoveGenerator:
             count = mg.getMoveCount()
             print(f"Có {count} nước đi")
         """
-        return len(self.getState())
+        return self.board.legal_moves.count()
 
     def getGamePly(self):
         """Lấy tổng số nước đi đã chơi (half-moves)
@@ -233,4 +236,4 @@ class MoveGenerator:
             ply = mg.getGamePly()  # 0 lúc đầu
             # Sau khi e2e4 e7e5: ply = 2
         """
-        return self.board.fullmove_number * 2 - (2 if self.board.turn == chess.WHITE else 1)
+        return self.board.ply()
